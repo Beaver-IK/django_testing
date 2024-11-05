@@ -1,6 +1,6 @@
 from notes.forms import NoteForm
 from notes.models import Note
-from tests.utils import BaseData
+from notes.tests.utils import BaseData
 
 
 class TestAddNotePage(BaseData):

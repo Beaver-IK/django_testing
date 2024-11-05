@@ -1,6 +1,6 @@
 from http import HTTPStatus
 
-from tests.utils import BaseData
+from notes.tests.utils import BaseData
 
 
 class TestRoutes(BaseData):

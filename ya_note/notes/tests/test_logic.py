@@ -2,8 +2,8 @@ from http import HTTPStatus
 
 from notes.forms import WARNING
 from notes.models import Note
+from notes.tests.utils import BaseData
 from pytils.translit import slugify
-from tests.utils import BaseData
 
 
 class TestAddNote(BaseData):
