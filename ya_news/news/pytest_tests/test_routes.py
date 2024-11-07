@@ -1,20 +1,22 @@
+import pytest
+
 from http import HTTPStatus
 
-import pytest
-from django.urls import reverse
 from pytest_django.asserts import assertRedirects
+
+from django.urls import reverse
 
 
 @pytest.mark.django_db
-@pytest.mark.parametrize('name, args', (
-    ('users:login', None),
-    ('users:logout', None),
-    ('users:signup', None),
-    ('news:home', None),
-    ('news:detail', pytest.lazy_fixture('news_id')),),)
-def test_pages_availability(client, name, args):
-    url = reverse(name, args=args)
-    response = client.get(url)
+@pytest.mark.parametrize(
+    'name', (
+        (pytest.lazy_fixture('login_page')),
+        (pytest.lazy_fixture('logout_page')),
+        (pytest.lazy_fixture('signup_page')),
+        (pytest.lazy_fixture('home_page')),
+        (pytest.lazy_fixture('detail_page')),),)
+def test_pages_availability(client, name):
+    response = client.get(name)
     assert response.status_code == HTTPStatus.OK
 
 
@@ -26,27 +28,26 @@ def test_pages_availability(client, name, args):
     ),
 )
 @pytest.mark.parametrize(
-    'name',
-    ('news:edit', 'news:delete'),
-)
-def test_availability_for_comment_edit_and_delete(client_user, comment_id,
+    'name', (
+        (pytest.lazy_fixture('edit_page')),
+        (pytest.lazy_fixture('delete_page')),),)
+def test_availability_for_comment_edit_and_delete(client_user, comment,
                                                   name, status_user):
     """Тест на проверку редактирования и удаления
     комментария автором и читателем.
     """
-    url = reverse(name, args=comment_id)
-    response = client_user.get(url)
+    response = client_user.get(name)
     assert response.status_code == status_user
 
 
 @pytest.mark.django_db
 @pytest.mark.parametrize(
-    'name',
-    ('news:edit', 'news:delete'),
-)
-def test_redirect_for_anonymous_client(client, name, comment_id):
+    'name', (
+        (pytest.lazy_fixture('edit_page')),
+        (pytest.lazy_fixture('delete_page')),),)
+def test_redirect_for_anonymous_client(client, name):
     """Тест на перенаправление неавторизованных пользователей."""
-    url = reverse(name, args=comment_id)
+    url = name
     login_url = reverse('users:login')
     response = client.get(url)
     expected_url = f'{login_url}?next={url}'

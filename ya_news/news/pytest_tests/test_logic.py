@@ -1,43 +1,48 @@
+import pytest
+
 from http import HTTPStatus
 
-import pytest
+from pytest_django.asserts import assertFormError, assertRedirects
+
 from news.forms import BAD_WORDS, WARNING
 from news.models import Comment
-from pytest_django.asserts import assertFormError, assertRedirects
+
+FORM_DATA = {'text': 'Текст комментария'}
+NEW_FORM_DATA = {'text': 'Новый текст комментария'}
 
 
 @pytest.mark.usefixtures('db')
 class TestCommentCreate:
     """Кейс создания комментариев."""
 
-    def test_create_comment(self, news, pages, client, authtor_comment,
-                            author_client, form_data):
+    def test_create_comment(self, news, client, authtor_comment,
+                            author_client, detail_page):
         """Тест на добавление комментария зарегистрированным
         и анонимным пользователем. Проверка перенаправления на страницу
         добавления комментария.
         """
-        url = pages['DETAIL']
+        url = detail_page
         count_comments = Comment.objects.count()
-        client.post(url, data=form_data)
+        client.post(url, data=FORM_DATA)
         assert Comment.objects.count() == count_comments, (
             'Анонимный пользователь смог добавить комментарий.')
-        response = author_client.post(url, data=form_data)
+        response = author_client.post(url, data=FORM_DATA)
         assert Comment.objects.count() == count_comments + 1, (
             'Авторизованный пользователь не смог оставить комментарий.')
         new_comment = Comment.objects.all().last()
-        assert new_comment.text == form_data['text'], (
+        assert new_comment.text == FORM_DATA['text'], (
             'Текст добавленного комментария отличается от ожидаемого.')
         assert new_comment.author == authtor_comment, (
             'Автор комментария отличается от ожидаемого.')
         assert new_comment.news == news, (
             'Новость к котрой относится комментарий была изменена.')
-        assertRedirects(response, f'{pages["DETAIL"]}#comments',
+        assertRedirects(response, f'{detail_page}#comments',
                         msg_prefix=('Неудачная попытка перенаправления '
                                     'после добавления комментария.'))
 
-    def test_user_cant_use_bad_words(self, pages, author_client):
+    def test_user_cant_use_bad_words(self, author_client, detail_page):
         """Тест на использование запрещенных слов."""
-        url = pages['DETAIL']
+        url = detail_page
         bad_words = dict(
             text=f'Текст, {BAD_WORDS[0]}, тут тоже текст'
         )
@@ -59,31 +64,33 @@ class TestEditDeleteComment:
     удаления и редактирования комментариев.
     """
 
-    def test_edit_comment(self, new_form_data, client, reader_client,
-                          comment, author_client, pages):
+    def test_edit_comment(self, client, reader_client,
+                          comment, author_client, edit_page,
+                          login_page, detail_page):
         """Тест функционала редактирования комментария."""
-        url = pages['EDIT']
+        url = edit_page
         comment = Comment.objects.get()
-        response = client.post(url, new_form_data)
+        response = client.post(url, NEW_FORM_DATA)
         assertRedirects(
-            response, f'{pages["LOGIN"]}?next={url}',
+            response, f'{login_page}?next={url}',
             msg_prefix='Неавторизованный пользователь '
             'небыл перенаправлен на страницу авторизации.')
-        response = reader_client.post(url, new_form_data)
+        response = reader_client.post(url, NEW_FORM_DATA)
         assert response.status_code == HTTPStatus.NOT_FOUND, (
             'Не автор смог отправить запрос на изменение комментария.')
         comment.refresh_from_db()
-        assert comment.text != new_form_data['text'], (
+        assert comment.text != NEW_FORM_DATA['text'], (
             'Комментарий был изменен не автором.')
-        response = author_client.post(url, new_form_data)
-        assertRedirects(response, f'{pages["DETAIL"]}#comments')
+        response = author_client.post(url, NEW_FORM_DATA)
+        assertRedirects(response, f'{detail_page}#comments')
         comment.refresh_from_db()
-        assert comment.text == new_form_data['text'], (
+        assert comment.text == NEW_FORM_DATA['text'], (
             'Комментарий небыл изменен автором.')
 
-    def test_delete_comment(self, reader_client, author_client, pages):
+    def test_delete_comment(self, reader_client, author_client,
+                            delete_page, detail_page):
         """Тест функционала удаления комментария."""
-        url = pages['DELETE']
+        url = delete_page
         count_comments = Comment.objects.count()
         response = reader_client.delete(url)
         assert response.status_code == HTTPStatus.NOT_FOUND, (
@@ -92,7 +99,7 @@ class TestEditDeleteComment:
             'Не автор, смог удалить комментарий')
         response = author_client.delete(url)
         assertRedirects(
-            response, f'{pages["DETAIL"]}#comments',
+            response, f'{detail_page}#comments',
             msg_prefix='После удаления комментария, '
             'автор небыл перенаправлен на страницу новости.')
         assert Comment.objects.count() == count_comments - 1, (

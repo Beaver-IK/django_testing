@@ -1,9 +1,9 @@
 from http import HTTPStatus
 
-from notes.tests.utils import BaseData
+from notes.tests.utils import BaseTestCase
 
 
-class TestRoutes(BaseData):
+class TestRoutes(BaseTestCase):
     """Кейс тестирования маршрутизатора."""
 
     def test_pages_for_everyone(self):
@@ -23,50 +23,52 @@ class TestRoutes(BaseData):
                          f'для неавторизованного пользователя'))
 
     def test_availability_for_notes_edit_delete(self):
-        """Тест доступности страниц детализации, редактирования
-        и удаления заметки для других пользователей.
+        """Тест доступности и перенаправления страниц детализации,
+        редактирования и удаления заметки для других пользователей и анониимов.
         """
         users = (
-            (self.AUTHOR),
-            (self.READER),
+            (self.AUTHOR.username, self.author_client, HTTPStatus.OK),
+            (self.READER.username, self.reader_client, HTTPStatus.NOT_FOUND),
+            ('Аноним', self.client, HTTPStatus.FOUND),
         )
         urls = (
             self.PAGES['EDIT'],
             self.PAGES['DELETE'],
             self.PAGES['DETAIL'],
-            self.PAGES['ADD'],
-            self.PAGES['SUCCESS'],
-            self.PAGES['LIST']
         )
-        for user in users:
+        for user, client, status in users:
             for name in urls:
-                with self.subTest(user=user, name=name):
-                    if user == self.AUTHOR:
-                        response = self.author_client.get(name)
-                        self.assertEqual(
-                            response.status_code, HTTPStatus.OK,
-                            msg=f'{user} не смог зайти на страницу {name}')
-                    else:
-                        response = self.client.get(name)
-                        self.assertEqual(
-                            response.status_code, HTTPStatus.FOUND,
-                            msg=f'Не автор смог зайти на страницу {name}')
+                with self.subTest(user=user, name=name, status=status):
+                    response = client.get(name)
+                    self.assertEqual(response.status_code, status)
+                    if status == HTTPStatus.FOUND:
+                        redirect_url = self.redirect_login_page(name)
+                        self.assertRedirects(response, redirect_url,
+                                             msg_prefix=(
+                                                 f'Аноним небыл перенаправлен '
+                                                 f'на {redirect_url}'))
 
-    def test_redirect_for_anonymus(self):
-        """Тест редиректа анонимного пользователя на страницу авторизации."""
+    def test_availability_for_add_and_list_notes(self):
+        """Тест доступности и перенаправления страниц добавления заметок
+        и списка заметок для зарегистрированного пользователя и анонима.
+        """
+        users = (
+            (self.AUTHOR.username, self.author_client, HTTPStatus.OK),
+            ('Аноним', self.client, HTTPStatus.FOUND),
+        )
         urls = (
-            self.PAGES['EDIT'],
-            self.PAGES['DELETE'],
-            self.PAGES['DETAIL'],
             self.PAGES['ADD'],
             self.PAGES['SUCCESS'],
             self.PAGES['LIST']
         )
-        for name in urls:
-            with self.subTest(name=name):
-                url = name
-                redirect_url = self.redirect_login_page(name)
-                response = self.client.get(url)
-                self.assertRedirects(
-                    response, redirect_url,
-                    msg_prefix=f'Аноним небыл перенаправлен на {redirect_url}')
+        for user, client, status in users:
+            for name in urls:
+                with self.subTest(user=user, name=name, status=status):
+                    response = client.get(name)
+                    self.assertEqual(response.status_code, status)
+                    if status == HTTPStatus.FOUND:
+                        redirect_url = self.redirect_login_page(name)
+                        self.assertRedirects(response, redirect_url,
+                                             msg_prefix=(
+                                                 f'Аноним небыл перенаправлен '
+                                                 f'на {redirect_url}'))

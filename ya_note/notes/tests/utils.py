@@ -1,5 +1,3 @@
-"""Базовые классы и переменные для Unittest."""
-
 from django.contrib.auth import get_user_model
 from django.test import Client, TestCase
 from django.urls import reverse
@@ -8,13 +6,13 @@ from notes.models import Note
 User = get_user_model()
 
 
-class BaseData(TestCase):
+class BaseTestCase(TestCase):
     """Базовый набор функций и переменных для тестов."""
 
     @classmethod
     def setUpTestData(cls):
         cls.AUTHOR = User.objects.create(username='Автор')
-        cls.READER = User.objects.create(username='Читатель')
+        cls.READER = User.objects.create(username='Не автор')
         cls.author_client = Client()
         cls.reader_client = Client()
         cls.author_client.force_login(cls.AUTHOR)

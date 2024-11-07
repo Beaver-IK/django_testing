@@ -1,27 +1,23 @@
+import pytest
 from datetime import datetime, timedelta
 
-import pytest
+from django.conf import settings
 from django.test.client import Client
 from django.urls import reverse
+from django.utils import timezone
+
 from news.models import Comment, News
 
-from .constants import NEWS_COUNT_ON_HOME_PAGE
+COMMENTS_COUNT = 10
 
 
 @pytest.fixture
 def news():
     """Создает и возвращает объект новости"""
-    news = News.objects.create(
+    return News.objects.create(
         title='Заголовок новсти.',
         text='Новостной текст.'
     )
-    return news
-
-
-@pytest.fixture
-def news_id(news):
-    """Возвращает id новости"""
-    return (news.id,)
 
 
 @pytest.fixture
@@ -44,12 +40,6 @@ def authtor_comment(django_user_model):
 def no_authtor_comment(django_user_model):
     """Возвращает пользователя читателя."""
     return django_user_model.objects.create(username='Читатель')
-
-
-@pytest.fixture
-def comment_id(comment):
-    """Возвращает ID комментария."""
-    return (comment.id,)
 
 
 @pytest.fixture
@@ -82,8 +72,18 @@ def add_news():
             title=f'Новость {index}',
             text='Просто текст.',
             date=today - timedelta(days=index))
-        for index in range(NEWS_COUNT_ON_HOME_PAGE + 1)]
-    return all_news
+        for index in range(settings.NEWS_COUNT_ON_HOME_PAGE + 1)]
+    News.objects.bulk_create(all_news)
+
+
+@pytest.fixture
+def add_comments(news, authtor_comment):
+    now = timezone.now()
+    for index in range(COMMENTS_COUNT):
+        comment = Comment.objects.create(news=news, author=authtor_comment,
+                                         text=f'Tекст {index}')
+        comment.created = now + timedelta(days=index)
+        comment.save()
 
 
 @pytest.fixture()
@@ -92,27 +92,42 @@ def enable_db_access(db):
 
 
 @pytest.fixture
-def form_data(news, authtor_comment):
-    """Возвращает данные, для создания комментария"""
-    return dict(
-        text='Текст комментария'
-    )
+def home_page():
+    """Возвращает адрес домашней страницы."""
+    return reverse('news:home')
 
 
 @pytest.fixture
-def new_form_data():
-    return dict(
-        text='Новый текст комментария'
-    )
+def delete_page(comment):
+    """Возвращает страницу удаления комментария."""
+    return reverse('news:delete', args=(comment.id,))
 
 
 @pytest.fixture
-def pages(news_id, comment_id):
-    """Возвращает словарь со страницами приложения."""
-    return dict(
-        HOME=reverse('news:home'),
-        DELETE=reverse('news:delete', args=comment_id),
-        EDIT=reverse('news:edit', args=comment_id),
-        DETAIL=reverse('news:detail', args=news_id),
-        LOGIN=reverse('users:login')
-    )
+def edit_page(comment):
+    """Возвращает страницу редактирования комментария."""
+    return reverse('news:edit', args=(comment.id,))
+
+
+@pytest.fixture
+def detail_page(news):
+    """Возращает страницу новости."""
+    return reverse('news:detail', args=(news.id,))
+
+
+@pytest.fixture
+def login_page():
+    """Возвращает страницу авторизации."""
+    return reverse('users:login')
+
+
+@pytest.fixture
+def logout_page():
+    """Возвращает страницу выхода из аккаунта."""
+    return reverse('users:logout')
+
+
+@pytest.fixture
+def signup_page():
+    """Возвращает страницу подстверждения."""
+    return reverse('users:signup')

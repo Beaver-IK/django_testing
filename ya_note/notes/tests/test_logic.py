@@ -2,11 +2,11 @@ from http import HTTPStatus
 
 from notes.forms import WARNING
 from notes.models import Note
-from notes.tests.utils import BaseData
+from notes.tests.utils import BaseTestCase
 from pytils.translit import slugify
 
 
-class TestAddNote(BaseData):
+class TestAddNote(BaseTestCase):
     """Кейс для проверки добавления новой заметки."""
 
     def setUp(self):
@@ -80,7 +80,7 @@ class TestAddNote(BaseData):
                  'не соответствует формату'))
 
 
-class TestEditNote(BaseData):
+class TestEditNote(BaseTestCase):
 
     def setUp(self):
         self.PAGE = self.PAGES['EDIT']
@@ -116,7 +116,7 @@ class TestEditNote(BaseData):
             msg='Авторство было изменено')
 
 
-class TestDeleteNote(BaseData):
+class TestDeleteNote(BaseTestCase):
 
     def setUp(self):
         self.PAGE = self.PAGES['DELETE']

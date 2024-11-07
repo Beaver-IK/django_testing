@@ -1,34 +1,30 @@
 from notes.forms import NoteForm
 from notes.models import Note
-from notes.tests.utils import BaseData
+from notes.tests.utils import BaseTestCase
 
 
-class TestAddNotePage(BaseData):
-    """Кейс проверки контента страницы создания заметки."""
+class TestAddEditNotePage(BaseTestCase):
+    """Кейс проверки контента страницы создания и редактирования заметки."""
 
     def setUp(self):
         self.PAGE = self.PAGES['ADD']
 
     def test_tranfer_form(self):
         """Тест на передачу формы и ее соответствие формату."""
-        response = self.author_client.get(self.PAGE)
-        self.assertIn(
-            'form', response.context,
-            msg=(f'Форма "form" не была передана в словарь '
-                 f'контекста страницы {self.PAGE}'))
-        self.assertIsInstance(
-            response.context['form'], NoteForm,
-            msg='Формат формы не соответсвует NoteForm')
+        urls = (
+            self.PAGES['ADD'],
+            self.PAGES['EDIT'],
+        )
+        for name in urls:
+            with self.subTest(name=name):
+                response = self.author_client.get(self.PAGE)
+                self.assertIsInstance(
+                    response.context.get('form'), NoteForm,
+                    msg='Форма не передается в словарь контекста или '
+                    'формат формы не соответсвует NoteForm')
 
 
-class TestEditNotePage(TestAddNotePage):
-    """Кейс проверки контента страницы редактирования заметки."""
-
-    def setUp(self):
-        self.PAGE = self.PAGES['EDIT']
-
-
-class TestDetailPage(BaseData):
+class TestDetailPage(BaseTestCase):
     """Кейс проверки контента страницы заметки."""
 
     def setUp(self):
@@ -53,7 +49,7 @@ class TestDeletePage(TestDetailPage):
         self.PAGE = self.PAGES['DELETE']
 
 
-class TestNotesListPage(BaseData):
+class TestNotesListPage(BaseTestCase):
     """Кейс проверки страницы списка заметок."""
 
     def setUp(self):
