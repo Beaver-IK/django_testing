@@ -1,9 +1,10 @@
 from http import HTTPStatus
 
+from pytils.translit import slugify
+
 from notes.forms import WARNING
 from notes.models import Note
 from notes.tests.utils import BaseTestCase
-from pytils.translit import slugify
 
 
 class TestAddNote(BaseTestCase):

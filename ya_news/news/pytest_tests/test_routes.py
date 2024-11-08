@@ -1,20 +1,27 @@
-import pytest
-
 from http import HTTPStatus
 
+import pytest
 from pytest_django.asserts import assertRedirects
+from pytest_lazyfixture import lazy_fixture as lf
 
-from django.urls import reverse
+pytestmark = pytest.mark.django_db
+
+LOGIN = lf('login_page')
+LOGOUT = lf('logout_page')
+SIGNUP = lf('signup_page')
+HOME = lf('home_page')
+DETAIL = lf('detail_page')
+EDIT = lf('edit_page')
+DELETE = lf('delete_page')
 
 
-@pytest.mark.django_db
 @pytest.mark.parametrize(
     'name', (
-        (pytest.lazy_fixture('login_page')),
-        (pytest.lazy_fixture('logout_page')),
-        (pytest.lazy_fixture('signup_page')),
-        (pytest.lazy_fixture('home_page')),
-        (pytest.lazy_fixture('detail_page')),),)
+        LOGIN,
+        LOGOUT,
+        SIGNUP,
+        HOME,
+        DETAIL,),)
 def test_pages_availability(client, name):
     response = client.get(name)
     assert response.status_code == HTTPStatus.OK
@@ -24,31 +31,21 @@ def test_pages_availability(client, name):
     'client_user, status_user',
     (
         (pytest.lazy_fixture('author_client'), HTTPStatus.OK),
-        (pytest.lazy_fixture('reader_client'), HTTPStatus.NOT_FOUND)
+        (pytest.lazy_fixture('reader_client'), HTTPStatus.NOT_FOUND),
+        (pytest.lazy_fixture('client'), HTTPStatus.FOUND),
     ),
 )
 @pytest.mark.parametrize(
     'name', (
-        (pytest.lazy_fixture('edit_page')),
-        (pytest.lazy_fixture('delete_page')),),)
-def test_availability_for_comment_edit_and_delete(client_user, comment,
+        EDIT,
+        DELETE,),)
+def test_availability_for_comment_edit_and_delete(client_user, login_page,
                                                   name, status_user):
     """Тест на проверку редактирования и удаления
-    комментария автором и читателем.
+    комментария автором, читателем и анонимом.
     """
     response = client_user.get(name)
+    expected_url = f'{login_page}?next={name}'
     assert response.status_code == status_user
-
-
-@pytest.mark.django_db
-@pytest.mark.parametrize(
-    'name', (
-        (pytest.lazy_fixture('edit_page')),
-        (pytest.lazy_fixture('delete_page')),),)
-def test_redirect_for_anonymous_client(client, name):
-    """Тест на перенаправление неавторизованных пользователей."""
-    url = name
-    login_url = reverse('users:login')
-    response = client.get(url)
-    expected_url = f'{login_url}?next={url}'
-    assertRedirects(response, expected_url)
+    if response.status_code == HTTPStatus.FOUND:
+        assertRedirects(response, expected_url)

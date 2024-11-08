@@ -1,6 +1,6 @@
-import pytest
 from datetime import datetime, timedelta
 
+import pytest
 from django.conf import settings
 from django.test.client import Client
 from django.urls import reverse
@@ -9,6 +9,15 @@ from django.utils import timezone
 from news.models import Comment, News
 
 COMMENTS_COUNT = 10
+
+
+def generate_news():
+    today = datetime.today()
+    for index in range(settings.NEWS_COUNT_ON_HOME_PAGE + 1):
+        yield News(
+            title=f'Новость {index}',
+            text='Просто текст.',
+            date=today - timedelta(days=index))
 
 
 @pytest.fixture
@@ -59,21 +68,9 @@ def reader_client(no_authtor_comment):
 
 
 @pytest.fixture
-def enable_db_access(db):
-    """Включает доступ к базе данных."""
-
-
-@pytest.fixture
 def add_news():
     """Возвращает список новостей согласно установленной пагинации."""
-    today = datetime.today()
-    all_news = [
-        News(
-            title=f'Новость {index}',
-            text='Просто текст.',
-            date=today - timedelta(days=index))
-        for index in range(settings.NEWS_COUNT_ON_HOME_PAGE + 1)]
-    News.objects.bulk_create(all_news)
+    News.objects.bulk_create(generate_news())
 
 
 @pytest.fixture

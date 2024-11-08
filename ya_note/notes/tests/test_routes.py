@@ -6,69 +6,42 @@ from notes.tests.utils import BaseTestCase
 class TestRoutes(BaseTestCase):
     """Кейс тестирования маршрутизатора."""
 
-    def test_pages_for_everyone(self):
-        """Тест доступности страниц для неавторизованных пользователей."""
-        urls = (
-            self.PAGES['LOGIN'],
-            self.PAGES['LOGOUT'],
-            self.PAGES['SIGNUP'],
-            self.PAGES['HOME'],
+    def test_response_status(self):
+        """Тест проверки статус кодов."""
+        access = (
+            (self.PAGES['HOME'], self.client, HTTPStatus.OK),
+            (self.PAGES['LOGIN'], self.client, HTTPStatus.OK),
+            (self.PAGES['LOGOUT'], self.client, HTTPStatus.OK),
+            (self.PAGES['SIGNUP'], self.client, HTTPStatus.OK),
+            (self.PAGES['LIST'], self.reader_client, HTTPStatus.OK),
+            (self.PAGES['SUCCESS'], self.reader_client, HTTPStatus.OK),
+            (self.PAGES['ADD'], self.reader_client, HTTPStatus.OK),
+            (self.PAGES['DETAIL'], self.author_client, HTTPStatus.OK),
+            (self.PAGES['DELETE'], self.author_client, HTTPStatus.OK),
+            (self.PAGES['EDIT'], self.author_client, HTTPStatus.OK),
+            (self.PAGES['DETAIL'], self.reader_client, HTTPStatus.NOT_FOUND),
+            (self.PAGES['DELETE'], self.reader_client, HTTPStatus.NOT_FOUND),
+            (self.PAGES['EDIT'], self.reader_client, HTTPStatus.NOT_FOUND),
         )
-        for name in urls:
-            with self.subTest(name=name):
-                response = self.client.get(name)
+        for url, client, status in access:
+            with self.subTest(name=url, client=client, status=status):
+                response = client.get(url)
                 self.assertEqual(
-                    response.status_code, HTTPStatus.OK,
-                    msg=(f'Страница {name} не доступна '
-                         f'для неавторизованного пользователя'))
+                    response.status_code, status,
+                    msg='Ошибка доступа')
 
-    def test_availability_for_notes_edit_delete(self):
-        """Тест доступности и перенаправления страниц детализации,
-        редактирования и удаления заметки для других пользователей и анониимов.
-        """
-        users = (
-            (self.AUTHOR.username, self.author_client, HTTPStatus.OK),
-            (self.READER.username, self.reader_client, HTTPStatus.NOT_FOUND),
-            ('Аноним', self.client, HTTPStatus.FOUND),
-        )
+    def test_redirects(self):
+        """Тест перенаправления."""
         urls = (
+            self.PAGES['LIST'],
+            self.PAGES['SUCCESS'],
+            self.PAGES['ADD'],
+            self.PAGES['DETAIL'],
             self.PAGES['EDIT'],
             self.PAGES['DELETE'],
-            self.PAGES['DETAIL'],
         )
-        for user, client, status in users:
-            for name in urls:
-                with self.subTest(user=user, name=name, status=status):
-                    response = client.get(name)
-                    self.assertEqual(response.status_code, status)
-                    if status == HTTPStatus.FOUND:
-                        redirect_url = self.redirect_login_page(name)
-                        self.assertRedirects(response, redirect_url,
-                                             msg_prefix=(
-                                                 f'Аноним небыл перенаправлен '
-                                                 f'на {redirect_url}'))
-
-    def test_availability_for_add_and_list_notes(self):
-        """Тест доступности и перенаправления страниц добавления заметок
-        и списка заметок для зарегистрированного пользователя и анонима.
-        """
-        users = (
-            (self.AUTHOR.username, self.author_client, HTTPStatus.OK),
-            ('Аноним', self.client, HTTPStatus.FOUND),
-        )
-        urls = (
-            self.PAGES['ADD'],
-            self.PAGES['SUCCESS'],
-            self.PAGES['LIST']
-        )
-        for user, client, status in users:
-            for name in urls:
-                with self.subTest(user=user, name=name, status=status):
-                    response = client.get(name)
-                    self.assertEqual(response.status_code, status)
-                    if status == HTTPStatus.FOUND:
-                        redirect_url = self.redirect_login_page(name)
-                        self.assertRedirects(response, redirect_url,
-                                             msg_prefix=(
-                                                 f'Аноним небыл перенаправлен '
-                                                 f'на {redirect_url}'))
+        for url in urls:
+            with self.subTest(url=url):
+                response = self.client.get(url)
+                redirect_url = self.redirect_login_page(url)
+                self.assertRedirects(response, redirect_url)

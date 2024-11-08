@@ -1,12 +1,12 @@
 import pytest
-
 from django.conf import settings
 
 from news.forms import CommentForm
 from news.models import News
 
+pytestmark = pytest.mark.django_db
 
-@pytest.mark.usefixtures('db')
+
 class TestHomePage:
 
     def test_order_and_count_news(self, home_page, client, add_news):
@@ -21,14 +21,11 @@ class TestHomePage:
         assert all_dates == sorted_dates, 'Ошибка сортировки'
 
 
-@pytest.mark.usefixtures("db")
 class TestDetailPage:
 
-    def test_news_and_form_in_context(self, client,
-                                      author_client, detail_page):
-        """Тест правильности написания названия объекта в контексте,
-        проверка формата передаваемых объектов и проверка на отсутствие формы
-        комментирования для неавторизованных пользователей.
+    def test_news_and_form_in_context_for_anonim(self, client, detail_page):
+        """Тест корректного названия объекта в контексте, проверка на
+        отсутствие формы комментирования для неавторизованных пользователей.
         """
         url = detail_page
         response = client.get(url)
@@ -37,10 +34,12 @@ class TestDetailPage:
         assert isinstance(response.context['news'], News)
         assert 'form' not in response.context, (
             'Отображается форма для анонимного пользователя')
+
+    def test_form_in_context_for_auth_user(self, author_client, detail_page):
+        """Тест наличия и соответвия формата формы для"""
+        url = detail_page
         response = author_client.get(url)
-        assert 'form' in response.context, (
-            'Отсутвует форма комментария для авторизованного пользователя.')
-        assert isinstance(response.context['form'], CommentForm), (
+        assert isinstance(response.context.get('form'), CommentForm), (
             'Неверный формат передаваемой формы.'
         )
 
